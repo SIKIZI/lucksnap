@@ -21,56 +21,21 @@ const getBallColor = (number: number): string => {
 
 export default function Home() {
   const [generatedNumbers, setGeneratedNumbers] = useState<number[]>([]);
-  const [userNumbers, setUserNumbers] = useState<string[]>(Array(5).fill(""));
+  const [userNumbers, setUserNumbers] = useState<string[]>(Array(3).fill(""));
   const [winningNumbers, setWinningNumbers] = useState<number[]>([]);
   const [results, setResults] = useState<string[]>([]);
   const [activeInputIndex, setActiveInputIndex] = useState<number>(0);
   const [balance, setBalance] = useState<number>(20000);
   const [purchasedSlots, setPurchasedSlots] = useState<boolean[]>(
-    Array(5).fill(false)
+    Array(3).fill(false)
   );
   const [timeUntilCharge, setTimeUntilCharge] = useState<number>(60);
-
-  useEffect(() => {
-    const savedBalance = localStorage.getItem("balance");
-    const savedUserNumbers = localStorage.getItem("userNumbers");
-    const savedGeneratedNumbers = localStorage.getItem("generatedNumbers");
-    const savedPurchasedSlots = localStorage.getItem("purchasedSlots");
-
-    if (savedBalance) {
-      setBalance(parseInt(savedBalance, 10));
-    }
-    if (savedUserNumbers) {
-      setUserNumbers(JSON.parse(savedUserNumbers));
-    }
-    if (savedGeneratedNumbers) {
-      setGeneratedNumbers(JSON.parse(savedGeneratedNumbers));
-    }
-    if (savedPurchasedSlots) {
-      setPurchasedSlots(JSON.parse(savedPurchasedSlots));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("balance", balance.toString());
-  }, [balance]);
-
-  useEffect(() => {
-    localStorage.setItem("userNumbers", JSON.stringify(userNumbers));
-  }, [userNumbers]);
-
-  useEffect(() => {
-    localStorage.setItem("generatedNumbers", JSON.stringify(generatedNumbers));
-  }, [generatedNumbers]);
-
-  useEffect(() => {
-    localStorage.setItem("purchasedSlots", JSON.stringify(purchasedSlots));
-  }, [purchasedSlots]);
+  const [toast, setToast] = useState<string>("");
 
   useEffect(() => {
     const interval = setInterval(() => {
       setBalance((prevBalance) => prevBalance + 500);
-      setTimeUntilCharge(60); // 충전 후 타이머 리셋
+      setTimeUntilCharge(60);
     }, 60000);
 
     const timer = setInterval(() => {
@@ -83,12 +48,29 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const scrollToNumberPicker = () => {
+    setTimeout(() => {
+      const numberPicker = document.querySelector(".number-picker");
+      if (numberPicker) {
+        numberPicker.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  };
+
   const handleGenerate = () => {
     if (balance >= 5000) {
       setBalance(balance - 5000);
       setGeneratedNumbers(generateLottoNumbers());
+      scrollToNumberPicker();
     } else {
-      alert("잔액이 부족합니다. 1분마다 500원씩 충전됩니다.");
+      setToast("잔액이 부족합니다. 1분마다 500원씩 충전됩니다.");
     }
   };
 
@@ -99,9 +81,8 @@ export default function Home() {
   };
 
   const handleNumberPick = (number: number) => {
-    // 현재 슬롯이 구매되지 않았으면 경고
     if (!purchasedSlots[activeInputIndex]) {
-      alert("먼저 이 슬롯의 복권을 구매해주세요. (5,000원)");
+      setToast("먼저 이 슬롯의 복권을 구매해주세요. (5,000원)");
       return;
     }
 
@@ -129,7 +110,6 @@ export default function Home() {
   };
 
   const handleSimulate = () => {
-    // 구매한 번호가 있는지 확인
     const hasPurchasedNumbers =
       generatedNumbers.length === 6 ||
       userNumbers.some(
@@ -141,7 +121,7 @@ export default function Home() {
       );
 
     if (!hasPurchasedNumbers) {
-      alert(
+      setToast(
         "복권을 구매해야 추첨이 가능합니다. 랜덤 복권을 구매하거나 수동으로 번호를 선택하세요."
       );
       return;
@@ -149,6 +129,14 @@ export default function Home() {
 
     const newWinningNumbers = generateLottoNumbers();
     setWinningNumbers(newWinningNumbers);
+
+    // 결과 섹션으로 스크롤
+    setTimeout(() => {
+      const resultSection = document.querySelector(".result-section");
+      if (resultSection) {
+        resultSection.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
 
     const newResults = userNumbers
       .filter((line) => line.trim() !== "")
@@ -216,10 +204,9 @@ export default function Home() {
       setResults(newResults);
     }
 
-    // 추첨 후 모든 번호 리셋
     setGeneratedNumbers([]);
-    setUserNumbers(Array(5).fill(""));
-    setPurchasedSlots(Array(5).fill(false));
+    setUserNumbers(Array(3).fill(""));
+    setPurchasedSlots(Array(3).fill(false));
   };
 
   const getSelectedNumbers = (index: number): number[] => {
@@ -244,6 +231,7 @@ export default function Home() {
 
   return (
     <div className="container">
+      {toast && <div className="toast">{toast}</div>}
       <div className="balance-display">
         <div>잔액: {balance.toLocaleString()}원</div>
         <div style={{ fontSize: "14px", color: "#666", marginTop: "5px" }}>
@@ -287,8 +275,9 @@ export default function Home() {
                   newPurchasedSlots[i] = true;
                   setPurchasedSlots(newPurchasedSlots);
                   setActiveInputIndex(i);
+                  scrollToNumberPicker();
                 } else {
-                  alert("잔액이 부족합니다. 1분마다 500원씩 충전됩니다.");
+                  setToast("잔액이 부족합니다. 1분마다 500원씩 충전됩니다.");
                 }
               }}
               disabled={purchasedSlots[i] || balance < 5000}
@@ -303,7 +292,7 @@ export default function Home() {
                 if (purchasedSlots[i]) {
                   setActiveInputIndex(i);
                 } else {
-                  alert("먼저 이 슬롯의 복권을 구매해주세요.");
+                  setToast("먼저 이 슬롯의 복권을 구매해주세요.");
                 }
               }}
               readOnly
@@ -316,10 +305,12 @@ export default function Home() {
             />
           </div>
         ))}
-        <NumberPicker
-          onNumberClick={handleNumberPick}
-          selectedNumbers={getSelectedNumbers(activeInputIndex)}
-        />
+        <div className="number-picker">
+          <NumberPicker
+            onNumberClick={handleNumberPick}
+            selectedNumbers={getSelectedNumbers(activeInputIndex)}
+          />
+        </div>
         <button
           className="button"
           onClick={handleSimulate}
@@ -353,6 +344,37 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .toast {
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background-color: #333;
+          color: white;
+          padding: 12px 24px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          z-index: 1000;
+          animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+
+        .number-picker {
+          width: 100%;
+        }
+      `}</style>
     </div>
   );
 }
