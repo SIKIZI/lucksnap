@@ -1,65 +1,173 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import NumberPicker from "./components/NumberPicker";
+
+const generateLottoNumbers = (): number[] => {
+  const numbers: Set<number> = new Set();
+  while (numbers.size < 6) {
+    numbers.add(Math.floor(Math.random() * 45) + 1);
+  }
+  return Array.from(numbers).sort((a, b) => a - b);
+};
 
 export default function Home() {
+  const [generatedNumbers, setGeneratedNumbers] = useState<number[]>([]);
+  const [userNumbers, setUserNumbers] = useState<string[]>(Array(5).fill(""));
+  const [winningNumbers, setWinningNumbers] = useState<number[]>([]);
+  const [results, setResults] = useState<string[]>([]);
+  const [activeInputIndex, setActiveInputIndex] = useState<number>(0);
+
+  const handleGenerate = () => {
+    setGeneratedNumbers(generateLottoNumbers());
+  };
+
+  const handleUserNumberChange = (index: number, value: string) => {
+    const newUserNumbers = [...userNumbers];
+    newUserNumbers[index] = value;
+    setUserNumbers(newUserNumbers);
+  };
+
+  const handleNumberPick = (number: number) => {
+    const newUserNumbers = [...userNumbers];
+    const currentNumbers =
+      userNumbers[activeInputIndex] === ""
+        ? []
+        : userNumbers[activeInputIndex]
+            .split(",")
+            .map((n) => parseInt(n.trim(), 10));
+
+    if (currentNumbers.includes(number)) {
+      // Remove number
+      const updatedNumbers = currentNumbers.filter((n) => n !== number);
+      newUserNumbers[activeInputIndex] = updatedNumbers.join(", ");
+    } else {
+      // Add number
+      if (currentNumbers.length < 6) {
+        const updatedNumbers = [...currentNumbers, number].sort(
+          (a, b) => a - b
+        );
+        newUserNumbers[activeInputIndex] = updatedNumbers.join(", ");
+      }
+    }
+    setUserNumbers(newUserNumbers);
+  };
+
+  const handleSimulate = () => {
+    const newWinningNumbers = generateLottoNumbers();
+    setWinningNumbers(newWinningNumbers);
+
+    const newResults = userNumbers
+      .filter((line) => line.trim() !== "") // Ignore empty lines
+      .map((line) => {
+        const userSet = line.split(",").map((num) => parseInt(num.trim(), 10));
+        if (userSet.length !== 6 || userSet.some(isNaN)) {
+          return "오류: 6개의 숫자를 쉼표로 구분하여 입력하세요.";
+        }
+        const matchedNumbers = userSet.filter((num) =>
+          newWinningNumbers.includes(num)
+        );
+        if (matchedNumbers.length === 6) {
+          return `축하합니다! 1등입니다! 실제 로또에서도 행운을 빕니다! (일치하는 번호: ${matchedNumbers.join(
+            ", "
+          )})`;
+        } else if (matchedNumbers.length === 5) {
+          return `축하합니다! 2등입니다! (일치하는 번호: ${matchedNumbers.join(
+            ", "
+          )})`;
+        } else if (matchedNumbers.length === 4) {
+          return `축하합니다! 3등입니다! (일치하는 번호: ${matchedNumbers.join(
+            ", "
+          )})`;
+        } else if (matchedNumbers.length === 3) {
+          return `축하합니다! 4등입니다! (일치하는 번호: ${matchedNumbers.join(
+            ", "
+          )})`;
+        }
+        return `아쉽지만 다음 기회에! (일치하는 번호: ${matchedNumbers.join(
+          ", "
+        )})`;
+      });
+
+    setResults(newResults);
+  };
+
+  const getSelectedNumbers = (index: number): number[] => {
+    if (userNumbers[index] === "") {
+      return [];
+    }
+    return userNumbers[index].split(",").map((n) => parseInt(n.trim(), 10));
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="container">
+      <h1>로또 번호 생성 및 시뮬레이션</h1>
+
+      <div className="lotto-section">
+        <h2>번호 생성기</h2>
+        <button className="button" onClick={handleGenerate}>
+          새 번호 생성
+        </button>
+        {generatedNumbers.length > 0 && (
+          <div className="lotto-numbers">
+            {generatedNumbers.map((num, i) => (
+              <div key={i} className="lotto-number">
+                {num}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="lotto-section">
+        <h2>모의 추첨</h2>
+        <p>아래 숫자판을 클릭하여 6개의 숫자를 선택하세요.</p>
+        <NumberPicker
+          onNumberClick={handleNumberPick}
+          selectedNumbers={getSelectedNumbers(activeInputIndex)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        {userNumbers.map((line, i) => (
+          <div key={i} className="input-group">
+            <label>로또 번호 세트 {i + 1}:</label>
+            <input
+              type="text"
+              value={line}
+              onFocus={() => setActiveInputIndex(i)}
+              readOnly
+              onChange={(e) => handleUserNumberChange(i, e.target.value)}
+              placeholder="숫자판을 이용해 번호를 선택하세요"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+        ))}
+        <button className="button" onClick={handleSimulate}>
+          추첨 시작
+        </button>
+      </div>
+
+      {winningNumbers.length > 0 && (
+        <div className="result-section">
+          <h2>추첨 결과</h2>
+          <div className="winning-numbers">
+            <p className="result-text">
+              <strong>당첨 번호:</strong>
+            </p>
+            <div className="lotto-numbers">
+              {winningNumbers.map((num, i) => (
+                <div key={i} className="lotto-number">
+                  {num}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="user-results">
+            {results.map((result, i) => (
+              <p key={i} className="result-text">
+                <strong>세트 {i + 1}:</strong> {result}
+              </p>
+            ))}
+          </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }
